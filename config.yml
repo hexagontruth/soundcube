@@ -1,0 +1,52 @@
+# Altering these values may cause program to behave in unpredictable ways.
+# Change them at your own risk.
+data:
+  source_dir: music                     # Place your music here
+  target_dir: data                      # Target for converted audio data
+  source_formats: [flac, ogg, mp3, wav] # Convert these files in source dir
+  sample_rate: 8192                     # Samples / second (44100 standard)
+  bit_depth: 16                         # Bits of amplitude precision
+  signed: true                          # Set to false for 8-bit depth
+  step_length: 2048                     # Timestep length in samples
+  hop_length: 2048                      # == step_length currently
+  hops_per_second: 4                    # sample_rate / hop_length
+  seconds_per_block: 10                 # Seconds per training block
+  float_type: float32                   # float32 may be faster than float16
+  float_storage: float16                # Use float16s for smaller storage
+  complex_type: complex64               # complex64 or complex128
+
+  convert_cmd: >                        # Customize conversion command
+    ffmpeg -y -i "%infile%" -ar %rate%
+    -acodec pcm_%signed%%depth%le
+    -ac 1 "%outfile%"
+
+net:
+  model_name: default                   # Model-builder function in models.py
+  loss: mse                             # Loss function
+  opt: adamax                           # Recommend adamax, rmsprop, or adam
+  default_hidden_size: 2048             # Default hidden layer size
+  batch_size: 128                       # Lower this to use less memory
+  epochs_per_cycle: 100                 # Epochs when running train.py
+
+state:
+  model_dir: models
+  model_base: model
+  save_w: true                          # Whether to save weights
+  save_m: false                         # Whether to save full model
+  epochs_per_save: 10                   # Save and overwrite weights here
+  epochs_per_archive: 50                # Save separate copy; 0 to disable
+
+output:
+  output_dir: output
+  default_file: generated.wav           # Default file for generated output
+  gen_steps: 960                        # Timesteps of generated output
+  random_seed: false                    # Uses rand. validation sample if false
+  seed_steps: 4                         # Timesteps of default seed input
+  fade_in: 2                            # In seconds; set to 0 for none
+  fade_out: 8                           # In seconds; set to 0 for none
+
+logging:
+  enabled: true                         # Enable logging
+  level: info                           # Python logging level
+  log_dir: logs                         # Log directory
+  log_file: soundcube.log               # Default log file
