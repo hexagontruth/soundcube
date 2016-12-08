@@ -2,10 +2,10 @@
 
 import os
 
-from modules.config import config as cf
-from modules.sclog import sclog
-import modules.utils as utils
-from modules.net import Net
+from lib.config import config as cf
+from lib.sclog import sclog
+import lib.utils as utils
+from lib.net import Net
 
 net = Net(Net.TRAIN)
 net.load()

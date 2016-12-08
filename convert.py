@@ -8,8 +8,8 @@ configured directory) and then run this script.
 """
 import os
 
-from config import config as cf
-import utils
+from lib.config import config as cf
+import lib.utils as utils
 
 clear = cf.flags.get('clear')
 

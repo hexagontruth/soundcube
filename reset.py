@@ -2,8 +2,8 @@
 
 import os
 
-from modules.config import config as cf
-import modules.utils as utils
+from lib.config import config as cf
+import lib.utils as utils
 
 clear = cf.flags.get('clear')
 logs = cf.flags.get('logs')
