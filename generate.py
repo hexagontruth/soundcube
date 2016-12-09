@@ -9,7 +9,7 @@ in config.yml. Specify files as separate command-line arguments. Do not use
 
 Usage:
 
-    generate.py [outputfile1,...] [key1=value1,...]
+    generate.py [OUTPUT_FILE_1]... [KEY1=VALUE]...
 
 Example:
 
