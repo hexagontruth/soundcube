@@ -11,7 +11,6 @@ import os
 import sys
 
 import numpy as np
-import yaml
 
 import keras.models
 from keras.callbacks import Callback
@@ -75,9 +74,8 @@ class Net():
     """
     Set default attribute values based on configuration.
     """
-    self.hop_length = cf.data.hop_length
     self.hops_per_block = cf.data.hops_per_second * cf.data.seconds_per_block
-    self.bins = cf.net.bins
+    self.bins = cf.data.step_length / 2
 
     # Channels represent bin depth
     # Changing this could cause unforeseen failures
@@ -92,18 +90,18 @@ class Net():
     # Model settings
     self.model_name = cf.net.model_name
     self.batch_size = cf.net.batch_size
-    self.epochs_per_cycle = cf.net.epochs_per_cycle
+    self.training_epochs = cf.net.training_epochs
     self.loss = cf.net.loss
     self.opt = cf.net.opt
     self.metrics = []
     self.history = []
     self.epochs = 0
-    self.model_kwargs = {}
+    self.kwargs = cf.net.kwargs.dict()
 
     # Save state configuration
     self.model_base = cf.state.model_base
     self.model_dir = cf.state.model_dir
-    self.model_base_path = cf.state.model_base_path
+    self.model_base_path = os.path.join(self.model_dir, self.model_base)
     self.save_w = cf.state.save_w
     self.save_m = cf.state.save_m
     self.epochs_per_save = cf.state.epochs_per_save
@@ -161,7 +159,7 @@ class Net():
     Arguments:
       dict:kwargs -- Kwargs, typically passed as **kwargs to calling method
     """
-    return {k: v for d in [self.model_kwargs, kwargs] for k, v in d.items()}
+    return {k: v for d in [self.kwargs, kwargs] for k, v in d.items()}
 
   # --- MODELS ---
 
@@ -241,7 +239,7 @@ class Net():
 
     Keyword arguments:
       int:batch_size (cf.net.batch_size) -- Training batch size
-      int:epochs (cf.net.epochs_per_cycle) -- Training epochs
+      int:epochs (cf.net.training_epochs) -- Training epochs
       bool:save (True) -- Whether to save after completion of training (note
         that this is independent of save points specified in the configuration)
     """
@@ -249,7 +247,7 @@ class Net():
       raise ScNetError('Not a training model!')
 
     batch_size = batch_size or self.batch_size
-    epochs = epochs or self.epochs_per_cycle
+    epochs = epochs or self.training_epochs
 
     x, y, xx, yy = tuple(self.data)
     callback = NetCallback(self)
@@ -371,7 +369,8 @@ class Net():
         filepath = self.model_base_path + '.w'
       self.tmodel.save_weights(filepath)
 
-      sclog('Saved model to "{0}" at {1} epochs.'.format(filepath, self.epochs))
+      sclog('Saved weights to "{0}" at {1} epochs.'.format(filepath,
+        self.epochs))
     except IOError:
       raise ScNetError('Error writing weights file. Possibly bad base path.')
 
@@ -380,7 +379,7 @@ class Net():
     Load weights.
 
     Keyword arguments:
-      str:filepath (self.model_base_path) -- Path of weights file
+      str:filepath (self.model_base_path) -- Full path of weights file
     """
     filepath = filepath or self.model_base_path + '.w'
     self.build_check()
@@ -388,10 +387,15 @@ class Net():
     try:
       if self.is_training() and self.tmodel is not None:
         self.tmodel.load_weights(filepath)
+        sclog('Loaded tmodel "{0}."'.format(filepath))
       if self.is_gen() and self.gmodel is not None:
         self.gmodel.load_weights(filepath)
+        sclog('Loaded gmodel "{0}."'.format(filepath))
     except IOError:
       raise ScNetError('Error reading weights file "{0}"'.format(filepath))
+    except Exception:
+      raise ScNetError(
+        'File "{0}" might contains wrong weights.'.format(filepath))
 
   def save_model(self):
     """
@@ -456,14 +460,21 @@ class Net():
       self.load_weights()
     # Else let's  see what other weight files are lying around
     else:
-      files = os.listdir(self.model_dir)
-      files = filter(lambda e: utils.index(e, self.model_base) == 0, files)
-      files = filter(lambda e: e[-2:] == '.w', files)
+      mfiles = os.listdir(self.model_dir)
+      mfiles = filter(lambda e: e[-2:] == '.w', mfiles)
+      mfiles = filter(lambda e: e[0] != '.', mfiles)
+      mfiles = [os.path.join(self.model_dir, e) for e in mfiles]
+      mfiles.sort()
+
+      # TODO: Fix this for names that start the same
+      files = filter(lambda e: utils.index(e, self.model_base) == 0, mfiles)
       if len(files) > 0:
-        files.sort()
         # Last file should have highest training numbers
         self.load_weights(files[-1])
-      else: # There is nothing to load!
+      # This does not seem like a good idea at present.
+      # elif len(mfiles) > 0: # Load whatever the last model file is
+      #   self.load_weights(mfiles[-1])
+      else: # Nothing to load!
         self.clear_history()
         return False
     return True
@@ -480,7 +491,7 @@ class Net():
     For finer-grained control over seed data, gen() can be executed from the
     interactive shell.
 
-    Keyword arguments:
+    Arguments:
       int:steps (None) -- Length of seed sequence in timesteps
     """
     steps = steps if steps else self.seed_steps
@@ -502,11 +513,12 @@ class Net():
       seed = seed * win
     return seed
 
-  def gen(self, seed=None, steps=None, reset=True):
+  def gen(self, steps=None, seed=None, reset=True):
     """
     Generates output sequence.
 
-    Keyword attributes:
+    Arguments:
+      int:steps (self.gen_steps) -- Steps to generate
       ndarray:seed (None) -- Specific seed to use, if any - otherwise calls
         quickseed() method
       bool:reset (True) -- Whether to reset recurrent model state before

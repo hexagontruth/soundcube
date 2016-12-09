@@ -14,12 +14,13 @@ classes.
 """
 import os
 import re
-import sys
+import subprocess
 
 import numpy as np
 import scipy.io.wavfile as wav
 
 from config import config as cf
+from sclog import sclog
 from scerror import *
 
 # There are a number of presently-unused functions that I have left here in case
@@ -31,19 +32,20 @@ from scerror import *
 # Some convenient local configuration variables
 source_dir = cf.data.source_dir
 target_dir = cf.data.target_dir
-source_formats = cf.data.source_formats
-sr = cf.data.sample_rate
+
 bit_depth = cf.data.bit_depth
-signed = cf.data.signed
+sr = cf.data.sample_rate
 hop_length = cf.data.hop_length
 step_length = cf.data.step_length
 hops_per_second = cf.data.hops_per_second
 seconds_per_block = cf.data.seconds_per_block
 hops_per_block = hops_per_second * seconds_per_block
+
 float_type = cf.data.float_type
 float_storage = cf.data.float_storage
 complex_type = cf.data.complex_type
 
+source_formats = cf.data.source_formats
 convert_cmd = cf.data.convert_cmd
 
 # --- DIRECTORY CONVERSION ---
@@ -58,16 +60,23 @@ def convert_source_dir(source_dir=source_dir, target_dir=target_dir,
     str:target_dir (cf.data.target_dir) -- Target dir
     str:base_dir (None) -- Base dir for recursion; defaults to source dir
     int:sr (cf.data.sample_rate) -- Conversion sample rate
+  
+  Returns number of files converted (excluding directories).
   """
+  k = 0
+
   base_dir = base_dir or source_dir
   for filename in os.listdir(source_dir):
     match = re.search("\.(\w+)$", filename)
     if (match and match.group(1) in source_formats):
       file2wav(source_dir + '/' + filename, base_dir, target_dir, sr)
+      k += 1
     elif (os.path.isdir(source_dir + '/' + filename)):
-      convert_source_dir(source_dir + '/' + filename, target_dir, base_dir, sr)
+      k += convert_source_dir(
+        source_dir + '/' + filename, target_dir, base_dir, sr)
+  return k
 
-def convert_wavs_to_freq(target_dir=target_dir, step_length=step_length,
+def convert_wavs_to_freqs(target_dir=target_dir, step_length=step_length,
     hop_length=None):
   """
   Converts wavs in data dir to .npy files of frequency timesteps
@@ -76,23 +85,22 @@ def convert_wavs_to_freq(target_dir=target_dir, step_length=step_length,
     str:target_dir (cf.data.target_dir) -- Target dir
     int:step_length (cf.data.step_length) -- Window (timestep) length
     int:hop_length (None) -- Not implemented; defaults to step_length
+
+  Returns number of files converted.  
   """
+  k = 0
+
   hop_length = hop_length or step_length
   for filename in os.listdir(target_dir):
     if (filename[-4:] == '.wav'):
-      filepath = target_dir + '/' + filename
-      array = read_wav(filepath)
+      filepath = os.path.join(target_dir, filename)
       if hop_length == step_length:
-        diff = len(array) % step_length
-        if diff != 0:
-          array = array[:-(len(array) % step_length)]
-        array = array.reshape(-1, step_length)
-        ft = np.fft.rfft(array)[:,:-1]
+        freq = wav2freq(filepath)
+        k += 1
       else:
-        raise ScNotImplementedError('Not yet implemented.')
-      ft = enchannel(ft)
-      #ft = ft / pol_std
-      np.save(filepath[:-4], ft.astype(float_type))
+        raise ScNotImplementedError('Change hop_length to match step_length.')
+      save_array(filepath[:-4], freq)
+  return k
 
 def file2wav(infile, base_dir=source_dir, target_dir=target_dir, sr=sr):
   """
@@ -126,9 +134,49 @@ def file2wav(infile, base_dir=source_dir, target_dir=target_dir, sr=sr):
   for var in command_vars:
     if (var in values):
       command = command.replace('%{0}%'.format(var), values[var])
-  os.system(command)
+  with open(os.devnull, 'w') as devnull:
+    subprocess.call(command, shell=True, stdout=devnull, stderr=devnull)
 
 # --- DATA IO & CONVERSION ---
+
+def read_wav(infile):
+  """
+  Read in a formatted wav file and convert it to float ndarray
+  """
+  rate, data = wav.read(infile)
+
+  data = data.astype(float_type) / (2 ** bit_depth / 2 - 1)
+  return data
+
+def write_wav(filename, s, sr=sr):
+  """
+  Wrapper for scipy.io.wavfile.write using configured sample rate
+
+  Arguments:
+    str:filename -- Filename
+    ndarray:s -- Audio time series
+    sr:int (cf.audio.sample_rate) -- Sample rate
+  """
+  if not is_int(s):
+    # TODO: Fix this to use config dtype
+    s = (s * (2 ** bit_depth / 2 - 1)).astype(get_int_type())
+  wav.write(filename, sr, s.flatten())
+
+def write_output(filename, array, process=True):
+  """
+  Convenience method for writing wav from timestep series.
+
+  See freq2time(), postprocess(), and write_wav().
+
+  Arguments:
+    str:filename -- Filename to save
+    ndarray:array -- Frequency timestep array to convert and save
+    bool:postprocess (True) -- Whether to apply postprocessing before saving
+  """
+  w = freq2time(array)
+  if (postprocess):
+    w = postprocess(w)
+  write_wav(filename, w)
 
 def load_array(path = None):
   """
@@ -147,46 +195,31 @@ def load_array(path = None):
     raise ScIOError('File "{0}" not found!'.format(path))
   return array
 
-def read_wav(infile):
+def save_array(path, array):
   """
-  Read in a formatted wav file and convert it to float ndarray
-  """
-  rate, data = wav.read(infile)
-  data = data.astype(float_type) / (2 ** bit_depth / 2 - 1)
-  return data
-
-def write_wav(filename, s, sr=sr):
-  """
-  Wrapper for scipy.io.wavfile.write using configured sample rate
+  Save arbitrary ndarray to configured dtype.
 
   Arguments:
-    str:filename -- Filename
-    ndarray:s -- Audio time series
-    sr:int (cf.audio.sample_rate) -- Sample rate
+    str:path -- Path
+    ndarray:array -- Array
   """
-  if not is_int(s):
-    # TODO: Fix this to use config dtype
-    s = (s * (2 ** bit_depth / 2 - 1)).astype('int16')
-  wav.write(filename, sr, s.flatten())
+  if np.iscomplexobj(array):
+    np.save(path, array.astype(complex_type))
+  else:
+    np.save(path, array.astype(float_storage))
 
-def wav2freq(infile):
+def wav2freq(filename):
   """
   Convenience method for reading in a wav and converting it to blocks.
 
   See read_wav() and time2freq() for details.
 
+  Arguments:
+    str:filename -- Wav file to load
+
   Returns timestep series
   """
-  return time2freq(read_wav(infile))
-
-def freq2wav(filename, array):
-  """
-  Convenience method for writing wav from timestep series.
-
-  See freq2time() and write_wav().
-  """
-  w = freq2time(array)
-  write_wav(filename, w)
+  return time2freq(read_wav(filename))
 
 def freq2time(s):
   """
@@ -202,18 +235,69 @@ def freq2time(s):
 
 def time2freq(array):
   """
-  Converts time domain waveform to frequency domain timesteps series.
+  Converts time domain waveform to frequency domain timestep series.
 
   Returns timestep series
   """
   trim = len(array) % step_length
   array = array[:-trim]
   array = array.reshape(-1, step_length)
-  fd = np.fft.rfft(array)[:,:-1]
-  fd = enchannel(fd)
-  return fd.astype(float_type)
+  freq = np.fft.rfft(array)[:,:-1]
+  freq = enchannel(freq).astype(float_type)
+  return freq
 
 # --- DATA LOADING ---
+
+def load_blocks(target_dir=target_dir):
+  """
+  Load frequency timestep data from data directory into training blocks.
+
+  Use this to load training data without partitioning it into training and
+  validation sets, etc.
+
+  Arguments:
+    str:target_dir (cf.data.target_dir) -- Target dir
+
+  Returns array of frequency timesteps arranged into training blocks
+  """
+  blockfiles = []
+  files = os.listdir(target_dir)
+  files.sort()
+  for filename in files:
+    if filename[-4:] == '.npy':
+      blockfile = np.load(target_dir + '/' + filename)
+      for i in range(0, len(blockfile), hops_per_block):
+        block = blockfile[i:i+hops_per_block]
+        if len(block) == hops_per_block:
+          blockfiles.append(block)
+  x = np.array(blockfiles).astype(float_type)
+  return x
+
+def load_wavs(target_dir=target_dir):
+  """
+  Load all wavs from data directory into time series training blocks.
+
+  Not used in current implementation, but would be useful for time domain
+  networks.
+
+  Arguments:
+    str:target_dir (cf.data.target_dir) -- Target dir
+
+  Returns array of wavs arranged into training blocks
+  """
+  samples_per_block = sr * seconds_per_block
+  wavfiles = []
+  files = os.listdir(target_dir)
+  files.sort()
+  for filename in files:
+    if filename[-4:] == '.wav':
+      wavfile = read_wav(target_dir + '/' + filename)
+      for i in range(0, len(wavfile), samples_per_block):
+        block = wavfile[i:i+samples_per_block]
+        if len(block) == samples_per_block:
+          wavfiles.append(block)
+  x = np.array(wavfiles)
+  return x
 
 def tvsplit(z, split=10):
   """
@@ -309,58 +393,22 @@ def normalize(s, axis=None):
     s = s.reshape(shape)
   return s.astype(float_type)
 
-def load_wavs(target_dir=target_dir):
-  """
-  Load all wavs from data directory into time series training blocks.
-
-  Not used in current implementation, but would be useful for time domain
-  networks.
-
-  Arguments:
-    str:target_dir (cf.data.target_dir) -- Target dir
-
-  Returns array of wavs arranged into training blocks
-  """
-  samples_per_block = sr * seconds_per_block
-  wavfiles = []
-  files = os.listdir(target_dir)
-  files.sort()
-  for filename in files:
-    if filename[-4:] == '.wav':
-      wavfile = read_wav(target_dir + '/' + filename)
-      for i in range(0, len(wavfile), samples_per_block):
-        block = wavfile[i:i+samples_per_block]
-        if len(block) == samples_per_block:
-          wavfiles.append(block)
-  x = np.array(wavfiles)
-  return x
-
-def load_blocks(target_dir=target_dir):
-  """
-  Load frequency timestep data from data directory into training blocks.
-
-  Use this to load training data without partitioning it into training and
-  validation sets, etc.
-
-  Arguments:
-    str:target_dir (cf.data.target_dir) -- Target dir
-
-  Returns array of frequency timesteps arranged into training blocks
-  """
-  blockfiles = []
-  files = os.listdir(target_dir)
-  files.sort()
-  for filename in files:
-    if filename[-4:] == '.npy':
-      blockfile = np.load(target_dir + '/' + filename)
-      for i in range(0, len(blockfile), hops_per_block):
-        block = blockfile[i:i+hops_per_block]
-        if len(block) == hops_per_block:
-          blockfiles.append(block)
-  x = np.array(blockfiles).astype(float_type)
-  return x
-
 # --- SIGNAL PROCESSING ---
+
+def postprocess(s):
+  """
+  Apply all configured postprocessing of audio signal.
+
+  Presently this is just a wrapper for fade(), but it will be expanded in the
+  future.
+
+  Arguments:
+    str:s -- Audio time series to process
+
+  Returns processed waveform.
+  """
+  y = fade(s)
+  return y
 
 def fade(s, fade_in_arg=cf.output.fade_in, fade_out_arg=cf.output.fade_out):
   """
@@ -372,6 +420,8 @@ def fade(s, fade_in_arg=cf.output.fade_in, fade_out_arg=cf.output.fade_out):
     ndarray:s -- Audio time series
     float:fade_in (cf.output.fade_in) -- Fade-in length in seconds
     float:fade_out (cf.output.fade_out) -- Fade-out length in seconds
+
+  Returns faded waveform.
   """
   s = fade_in(s, fade_in_arg)
   s = fade_out(s, fade_out_arg)
@@ -384,6 +434,8 @@ def fade_in(s, fade=cf.output.fade_in):
   Arguments:
     ndarray:s -- Audio time series
     float:fade (cf.output.fade_in) -- Fade-in length in seconds
+
+  Returns faded waveform. 
   """
   length = int(fade * sr)
   shape = [1] * len(s.shape)
@@ -401,6 +453,8 @@ def fade_out(s, fade=cf.output.fade_out):
   Arguments:
     ndarray:s -- Audio time series
     float:fade (cf.output.fade_out) -- Fade-out length in seconds
+
+  Returns faded waveform. 
   """
   length = int(fade * sr)
   shape = [1] * len(s.shape)
@@ -461,18 +515,22 @@ def enchannel(*args):
     y.append(np.stack((e.real, e.imag), -1))
   return tuple(y) if len(y) > 1 else y[0]
 
-def dechannel(s):
+def dechannel(*args):
   """
   Merge real and imaginary channels on last axis into complex form.
 
   Arguments:
-    ndarray:s -- ndarray to merge
-
+    *args -- ndarrays to merge
   """
-  shape = list(s.shape)
-  y = np.zeros(shape[:-1], dtype=float_type).T
-  y = s.T[0] + 1j*s.T[1]
-  return y.T
+  y = []
+  if type(args[0]) == tuple:
+    args = list(args[0])
+  for e in args:
+    shape = list(e.shape)
+    temp = np.zeros(shape[:-1], dtype=float_type).T
+    temp = e.T[0] + 1j*e.T[1]
+    y.append(temp.T)
+  return tuple(y) if len(y) > 1 else y[0]
 
 def pairchannels(arg):
   """
@@ -540,7 +598,7 @@ def add_bin(s, axis=-1, first=False):
     concat.reverse()
   return np.concatenate(concat, axis=axis)
 
-def to_categorical(s, n, dtype='byte'):
+def to_categorical(array, n, dtype='byte'):
   """
   Expands array of categorical values into n-dimensional feature space.
 
@@ -554,11 +612,11 @@ def to_categorical(s, n, dtype='byte'):
 
   Returns array with additional n-length final axis
   """
-  shape = list(s.shape) + [n]
-  s = s.flatten().astype(dtype)
+  shape = list(array.shape) + [n]
+  array = array.flatten().astype(dtype)
   cat = np.zeros(shape, dtype=dtype).reshape(-1, n)
   for i in range(cat.shape[0]):
-    cat[i,s[i]] = 1
+    cat[i,array[i]] = 1
   return cat.reshape(shape)
 
 def zip_loss(h, keys=None):
@@ -584,18 +642,76 @@ def zip_loss(h, keys=None):
       vals.append(h.history['val_loss'])
   return zip(*vals)
 
+# --- FILE DELETION AND RENAMING ---
+
+
+def remove(*paths):
+  """
+  A method for removing arbrary files.
+
+  Originally meant to protect files outside of project directory. This
+  functionality is no longer operative, but this is still used as a placeholder
+  for arbitrary file operations, and may be expanded in the future.
+
+  Arguments:
+    *paths -- Path components of file, merged by os.path.join
+
+  Raises True if success; raises ScError if failure.
+  """
+  filepath = os.path.realpath(os.path.join(*paths))
+  try:
+    os.remove(filepath)
+    return True
+  except OSError:
+    raise ScError('Cannot remove "{0}."'.format(filepath))
+
+def rename(filepath, newpath):
+  """
+  Safely rename file in subdirectory path.
+
+  Again, originally to protect files outside of project directory. This
+  functionality is no longer operative, but this is still used as a placeholder
+  for file renaming operations, and may be expanded in the future.
+
+  Arguments:
+    str:filepath -- Full path of file to be removed
+    str:newpath -- New path name
+
+  Raises True if success; raises ScError if failure.
+  """
+  try:
+    os.rename(filepath, newpath)
+    return True
+  except OSError:
+    raise ScError('Cannot rename "{0}."'.format(filepath))
+  return True
+
 # --- OTHER UTILITIES ---
 
-def rms(s):
+def rms(array):
   """
   Returns root mean square of given array.
 
   Arguments:
     ndarray:s -- Array
   """
-  return np.sqrt(np.mean(np.square(s)))
+  return np.sqrt(np.mean(np.square(array)))
 
-def is_int(n):
+def get_int_type(bit_depth=None, signed=None):
+  """
+  Returns dtype string based on provided bit depth and signed flag.
+
+  Arguments:
+    int:bit_depth (cf.data.bit_depth) -- Bit depth
+    bool:signed (cf.data.signed) -- Signed if True; unsigned if False
+  """
+  bit_depth = bit_depth or cf.data.bit_depth
+  signed = signed if signed is not None else cf.data.signed
+
+  schar = '' if signed else 'u'
+  return schar + 'int' + str(bit_depth)
+
+def is_int(array):
   """
   Checks if NumPy array is int or float type.
 
@@ -603,22 +719,23 @@ def is_int(n):
     ndarray:n -- Array to check
   """
   floats = ['float16', 'float32', 'float64']
-  dtype = str(n.dtype)
+  dtype = str(array.dtype)
   return False if dtype in floats else True
 
 def base_dir():
   """
   Convenience method for providing project base path.
 
-  Wrapper for somewhat unreasonably long Python command.
+  Wrapper for somewhat unreasonably long Python command. This was for file
+  safety functions, and is thus not based on CWD. It doesn't really do anything
+  at the moment though.
 
-  This is for file safety functions, and is thus not based on CWD.
   """
 
   #TODO: Improve this
   return os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-def is_subdir(path):
+def is_subpath(path):
   """
   Check if given path is in project folder.
 
@@ -627,55 +744,13 @@ def is_subdir(path):
   Arguments:
     str:path -- Path
   """
-  base = base_dir()
+  base = os.path.realpath(base_dir())
   path = os.path.realpath(path)
   try:
     val = True if (path != base and path.index(base) == 0) else False
   except ValueError:
     val = False
   return val
-
-def safe_remove(filepath):
-  """
-  Safely remove file from subdirectory of path.
-
-  To prevent accidental deletion of files outside project subdirectories.
-
-  Arguments:
-    str:filepath -- Full path of file to be removed
-
-  Returns True if success, False otherwise
-  """
-  if is_subdir(os.path.dirname(filepath)):
-    try:
-      os.remove(filepath)
-    except OSError:
-      raise ScError('Cannot safely remove "{0}."'.format(filepath))
-    return True
-  else:
-    return False
-
-def safe_rename(filepath, newpath):
-  """
-  Safely rename file in subdirectory path.
-
-  To prevent accidental renaming of files outside project subdirectories.
-
-  Arguments:
-    str:filepath -- Full path of file to be removed
-    str:newpath -- New path name
-
-  Returns True if success, False otherwise
-  """
-  if (is_subdir(os.path.dirname(filepath)) and
-    is_subdir(os.path.dirname(newpath))):
-    try:
-      os.rename(filepath, newpath)
-    except OSError:
-      raise ScError('Cannot safely rename "{0}."'.format(filepath))
-    return True
-  else:
-    return False
 
 def index(string, substr):
   """

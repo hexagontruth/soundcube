@@ -6,6 +6,18 @@ generate.py
 Generates one or more musical sequences using random seed data as configured
 in config.yml. Specify files as separate command-line arguments. Do not use
 "=" in filenames or they will be parsed as config arguments.
+
+Usage:
+
+    generate.py [outputfile1,...] [key1=value1,...]
+
+Example:
+
+  generate.py fancy_song.wav net.model_name=simple state.model_base=fancymodel
+
+This will load weights associated with models/fancymodel if they are available,
+then generate and save "fancy_song.wav." If no weights for this model have
+been saved, it will try other available weights, which may result in error).
 """
 
 import os
@@ -21,7 +33,7 @@ files = [e for e in cf.flags.keys()]
 if (len(files) == 0):
   files.append(cf.output.default_file)
 
-paths = [os.path.join(cf.output.output_dir, e) for e in files]
+filepaths = [os.path.join(cf.output.output_dir, e) for e in files]
 
 def main(files=files):
   """
@@ -41,12 +53,13 @@ def main(files=files):
   net.load()
 
   # Generate
-  for p in paths:
+  for filepath in filepaths:
     y = net.gen()
-    sclog('Generated "{0}."'.format(p))
-    w = utils.freq2time(y)
-    w = utils.fade(w)
-    utils.write_wav(p, w)
+    print 'Finished generating "{0}."'.format(filepath)
+    sclog('Generated "{0}."'.format(filepath))
+    utils.write_output(filepath, y)
+    if (cf.output.save_raw):
+      utils.save_array(os.path.splitext(filepath)[0], y)
 
 if (__name__ == '__main__'):
   main()

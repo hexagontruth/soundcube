@@ -9,6 +9,7 @@ configured directory) and then run this script.
 import os
 
 from lib.config import config as cf
+from lib.sclog import sclog
 import lib.utils as utils
 
 clear = cf.flags.get('clear')
@@ -31,9 +32,12 @@ def main(clear=clear):
       utils.safe_remove(os.path.join(cf.data.target_dir, file))
   
   # Convert source dir
-  utils.convert_source_dir()
+  k = utils.convert_source_dir()
+  sclog('Converted {0} source files to formatted wavs.'.format(k))
   # Convert wavs to freq timesteps
-  utils.convert_wavs_to_freq()
+  k = utils.convert_wavs_to_freqs()
+  sclog('Converted {0} wavs to frequency timesteps.'.format(k))
+  print 'Done converting {0} files.'.format(k)
 
 if (__name__ == '__main__'):
   main()

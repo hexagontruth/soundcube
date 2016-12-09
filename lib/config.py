@@ -28,8 +28,7 @@ import yaml
 
 from scerror import *
 
-CONFIG_PATH = \
-  'config.test.yml' if os.path.isfile('config.test.yml') else 'config.yml'
+CONFIG_PATH = 'config.yml'
 
 class Config():
   """
@@ -56,7 +55,7 @@ class Config():
     # Recursively add key-value pairs
     for k, v in opts.iteritems():
       if type(v) == dict:
-        setattr(self, k, Config(v, False))
+        setattr(self, k, Config(v, self))
       else:
         setattr(self, k, v)
 
@@ -165,7 +164,7 @@ class ConfigNull():
   def __eq__(self, other):
     return isinstance(other, ConfigNull)
 
-# ---
+# --- BUILD CONFIGS ---
 
 try:
   file = open(CONFIG_PATH, 'r')
@@ -174,12 +173,3 @@ try:
   config.set_args(sys.argv[1:])
 except IOError:
   raise ScConfigError('There was a problem loading the config file!')
-
-try:
-  config.data.set('hops_per_block',
-    config.data.hops_per_second * config.data.seconds_per_block)
-  config.net.set('bins', config.data.hop_length / 2)
-  config.state.set('model_base_path',
-    os.path.join(config.state.model_dir, config.state.model_base))
-except AttributeError:
-  raise ScConfigError('Missing required keys in config.yml!')

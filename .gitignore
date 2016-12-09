@@ -10,8 +10,6 @@
 *.w
 *.m
 
-config.test.yml
-
 /data/*
 /logs/*
 /models/*

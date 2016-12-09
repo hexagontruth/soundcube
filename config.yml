@@ -3,6 +3,7 @@
 data:
   source_dir: music                     # Place your music here
   target_dir: data                      # Target for converted audio data
+  temp_dir: /tmp                        # For testing and transient files
   source_formats: [flac, ogg, mp3, wav] # Convert these files in source dir
   sample_rate: 8192                     # Samples / second (44100 standard)
   bit_depth: 16                         # Bits of amplitude precision
@@ -24,9 +25,12 @@ net:
   model_name: default                   # Model-builder function in models.py
   loss: mse                             # Loss function
   opt: adamax                           # Recommend adamax, rmsprop, or adam
-  default_hidden_size: 2048             # Default hidden layer size
+  metrics: []                           # Metrics
   batch_size: 128                       # Lower this to use less memory
-  epochs_per_cycle: 100                 # Epochs when running train.py
+  training_epochs: 100                  # Epochs when running train.py
+  kwargs:                               # Optional model kwargs
+    hidden_size: 2048                   # Build functions should work w/o these
+    dropout: 0.5
 
 state:
   model_dir: models
@@ -39,6 +43,7 @@ state:
 output:
   output_dir: output
   default_file: generated.wav           # Default file for generated output
+  save_raw: false                       # Save raw frequency timesteps
   gen_steps: 960                        # Timesteps of generated output
   random_seed: false                    # Uses rand. validation sample if false
   seed_steps: 4                         # Timesteps of default seed input
