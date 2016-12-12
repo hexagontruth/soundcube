@@ -357,7 +357,7 @@ def load_all(target_dir=target_dir, split=10):
   x, y, xx, yy = tvbatch(t,v)
   return z, t, v, x, y, xx, yy
 
-def load_data(target_dir=target_dir, split = 10):
+def load_data(target_dir=target_dir, split=10):
   """
   Convenience method for only loading the training/validation tetrad.
 
@@ -371,6 +371,17 @@ def load_data(target_dir=target_dir, split = 10):
     x, y, xx, yy
   """
   return load_all(target_dir, split)[-4:]
+
+def is_data(target_dir=target_dir):
+  """
+  Check if data directory contains any timestep series files.
+
+  Arguments:
+    str:target_dir (cf.data.target_dir) -- Target directory
+  """
+  files = os.listdir(target_dir)
+  files = filter(lambda x: x[-4:] == '.npy', files)
+  return len(files) > 0
 
 def normalize(s, axis=None):
   """

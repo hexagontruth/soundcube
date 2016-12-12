@@ -16,6 +16,9 @@ Required:
 
 - [FFmpeg](https://ffmpeg.org/) or other audio conversion tool
 
+Recommended:
+
+- [CUDA](https://developer.nvidia.com/cuda-downloads)
 
 ## Quick Start
 

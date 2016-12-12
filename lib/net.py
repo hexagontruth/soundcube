@@ -55,16 +55,17 @@ class Net():
     self.tmodel = None
     self.gmodel = None
 
+    self.set_defaults()
+    self.set(**kwargs)
+
     # Set data
-    if data is True:
-      self.data = utils.load_data()
-    elif data is False:
+    is_data = utils.is_data()
+    if data is True and is_data:
+      self.data = utils.load_data(split=self.val_split)
+    elif data is False or not is_data:
       self.data = [None, None, None, None]
     elif isinstance(data, tuple) or isinstance(data, list):
       self.data = data
-
-    self.set_defaults()
-    self.set(**kwargs)
 
     # Set models
     if build:
@@ -91,6 +92,7 @@ class Net():
     self.model_name = cf.net.model_name
     self.batch_size = cf.net.batch_size
     self.training_epochs = cf.net.training_epochs
+    self.val_split = cf.net.val_split
     self.loss = cf.net.loss
     self.opt = cf.net.opt
     self.metrics = []

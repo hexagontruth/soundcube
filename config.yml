@@ -28,6 +28,7 @@ net:
   metrics: []                           # Metrics
   batch_size: 128                       # Lower this to use less memory
   training_epochs: 100                  # Epochs when running train.py
+  val_split: 10                         # Ratio of training to validation blocks
   kwargs:                               # Optional model kwargs
     hidden_size: 2048                   # Build functions should work w/o these
     dropout: 0.5
