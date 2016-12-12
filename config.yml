@@ -39,7 +39,7 @@ state:
   save_w: true                          # Whether to save weights
   save_m: false                         # Whether to save full model
   epochs_per_save: 10                   # Save and overwrite weights here
-  epochs_per_archive: 50                # Save separate copy; 0 to disable
+  epochs_per_archive: 0                 # Save separate copy; 0 to disable
 
 output:
   output_dir: output
