@@ -22,17 +22,21 @@ Recommended:
 
 ## Quick Start
 
-Place music in the _music_ directory and run the following commands, in order, from the project root directory:
+To train and generate with a model using the default configuration:
 
-    python convert.py
-    python train.py
-    python generate.py
+  1. Place existing music files in the `music` directory.
+
+  2. Run the following commands, in order, from the project root directory:
+
+          python convert.py
+          python train.py
+          python generate.py
 
 ## Configuration
 
 General configuration parameters can be set in `config.yml`. Note that certain parameters are co-dependent on each other, and not all --- nay, even most --- combinations of possible parameters have been tested. More granular settings vis-a-vis the configuration of NN models, etc., can be set in the appropriate source files.
 
-Most _config.yml_ key-value pairs can be set when executing one of the CLI scripts, by passing an argument of the form `key.subkey=value`. For instance, to set the data directory, number of training epochs, and weight file when running `train.py`, one could use:
+Most `config.yml` key-value pairs can be set when executing one of the CLI scripts, by passing an argument of the form `key.subkey=value`. For instance, to set the data directory, number of training epochs, and weight file when running `train.py`, one could use:
 
     python train.py data.target_dir=my_dir \
       net.training_epochs=42 \
@@ -65,7 +69,7 @@ Running `reset.py` will, by default, move the contents of the models directory t
 
   - `clear` --- Deletes all model files rather than renaming them (obviously use this with caution).
   - `logs` --- Deletes log file(s).
-  - `data` --- Deletes formatted data in _data_ (target_dir) directory. Does not affect original music in `music` directory.
+  - `data` --- Deletes formatted data in `data` (target_dir) directory. Does not affect original music in `music` directory.
 
 ### Model Building
 
