@@ -350,6 +350,31 @@ class Net():
     self.epochs_since_save = 0
     self.epochs_since_archive = 0
 
+  def get_weights(self):
+    """
+    Get model weights.
+
+    Returns weights from training model if available,
+    otherwise gen model. Returns None if no models are built.
+    """
+    if self.tmodel:
+      return self.tmodel.get_weights()
+    elif self.gmodel:
+      return self.gmodel.get_weights()
+    else:
+      return None
+
+  def set_weights(self, weights):
+    """
+    Set model weights to existing weight array.
+
+    list:weights -- Weights to set
+    """
+    if self.tmodel:
+      self.tmodel.set_weights(weights)
+    if self.gmodel:
+      self.gmodel.set_weights(weights)
+
   def save_weights(self, archive=False):
     """
     Save model weights.

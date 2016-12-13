@@ -26,24 +26,24 @@ from lib.sclog import sclog
 import lib.utils as utils
 from lib.net import Net
 
-new_flag = cf.flags.get('new')
-
-# Simplified parameters for setting epochs
-for k in cf.flags.keys():
-  if utils.is_str_int(k):
-    net.set(training_epochs=int(k))
-    break
-
 def main():
-    net = Net(Net.TRAIN)
-    if not new_flag:
-      net.load()
+  net = Net(Net.TRAIN)
 
-    print 'Completed {0} epochs. Training next {1}...'.format(
-      net.epochs, net.training_epochs)
+  # Simplified parameters for setting epochs
+  for k in cf.flags.keys():
+    if utils.is_str_int(k):
+      net.set(training_epochs=int(k))
+      break
 
-    net.train()
-    sclog('Finished training {0} epochs.'.format(net.training_epochs))
+  # Load weights unless new flag provided
+  if not cf.flags.get('new'):
+    net.load()
+
+  print 'Completed {0} epochs. Training next {1}...'.format(
+    net.epochs, net.training_epochs)
+
+  net.train()
+  sclog('Finished training {0} epochs.'.format(net.training_epochs))
 
 if (__name__ == '__main__'):
   main()

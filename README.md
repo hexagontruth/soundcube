@@ -30,9 +30,9 @@ Place music in the _music_ directory and run the following commands, in order, f
 
 ## Configuration
 
-General configuration parameters can be set in _config.yml_. Note that certain parameters are co-dependent on each other, and not all --- nay, even most --- combinations of possible parameters have been tested. More granular settings vis-a-vis the configuration of NN models, etc., can be set in the appropriate source files.
+General configuration parameters can be set in `config.yml`. Note that certain parameters are co-dependent on each other, and not all --- nay, even most --- combinations of possible parameters have been tested. More granular settings vis-a-vis the configuration of NN models, etc., can be set in the appropriate source files.
 
-Most _config.yml_ key-value pairs can be set when executing one of the CLI scripts, by passing an argument of the form `key.subkey=value`. For instance, to set the data directory, number of training epochs, and weight file when running _train.py_, one could use:
+Most _config.yml_ key-value pairs can be set when executing one of the CLI scripts, by passing an argument of the form `key.subkey=value`. For instance, to set the data directory, number of training epochs, and weight file when running `train.py`, one could use:
 
     python train.py data.target_dir=my_dir \
       net.training_epochs=42 \
@@ -42,13 +42,13 @@ Most _config.yml_ key-value pairs can be set when executing one of the CLI scrip
 
 ### Training
 
-1. Move an appropriate corpus of music to the _my music_ directory. I recommend something in the range of 2-4 hours, less certainly if your hardware sucks. Music can be left in separate directories --- the conversion script will flatten all directory hierarchies when converting into the _data_ directory.
+1. Move an appropriate corpus of music to the `my music` directory. I recommend something in the range of 2-4 hours, less certainly if your hardware sucks. Music can be left in separate directories --- the conversion script will flatten all directory hierarchies when converting into the _data_ directory.
 
 2. Once you have satisfied all dependencies and customized the configuration file to your liking (though it should work out of the box), run `python convert.py`.
 
 3. Run `python train.py [epochs]`.  This will presumably take a while, but Keras should keep you appraised of progress through the on-screen progress bar, epoch count, etc.
 
-    - `[epochs]` to train for. If not specified, the value in _config.yml_ will be used.
+    - `[epochs]` to train for. If not specified, the value in `config.yml` will be used.
 
 If the default settings are used, training history and weights will be saved periodically, and upon the completion of training. If and when the training script is run again it will resume where it left off, once it rebuilds the model and loads the weight. (Note that model-building can take quite a while each time one of these scripts is executed.) One can train multiple models concurrently either by passing specific model names to the training and generation scripts, or by changing the config file between iterations.
 
@@ -65,11 +65,11 @@ Running `reset.py` will, by default, move the contents of the models directory t
 
   - `clear` --- Deletes all model files rather than renaming them (obviously use this with caution).
   - `logs` --- Deletes log file(s).
-  - `data` --- Deletes formatted data in _data_ (target_dir) directory. Does not affect original music in _music_ directory.
+  - `data` --- Deletes formatted data in _data_ (target_dir) directory. Does not affect original music in `music` directory.
 
 ### Model Building
 
-Additional models can be defined as model functions in _lib/models.py_. See pydoc documentation for details.
+Additional models can be defined as model functions in `lib/models.py`. See pydoc documentation for details.
 
 ## Interactive Use
 

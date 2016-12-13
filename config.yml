@@ -1,22 +1,28 @@
 # Altering these values may cause program to behave in unpredictable ways.
 # Change them at your own risk.
 data:
+  source_formats:                       # Conversion file types in source dir
+    - flac
+    - mp3
+    - mp4
+    - ogg
+    - wav
   source_dir: music                     # Place your music here
   target_dir: data                      # Target for converted audio data
   temp_dir: /tmp                        # For testing and transient files
-  source_formats: [flac, ogg, mp3, wav] # Convert these files in source dir
   sample_rate: 8192                     # Samples / second (44100 standard)
   bit_depth: 16                         # Bits of amplitude precision
   signed: true                          # Set to false for 8-bit depth
   step_length: 2048                     # Timestep length in samples
-  hop_length: 2048                      # == step_length currently
+  hop_length: 2048                      # Should equal step_length currently
   hops_per_second: 4                    # sample_rate / hop_length
   seconds_per_block: 10                 # Seconds per training block
   float_type: float32                   # float32 may be faster than float16
   float_storage: float16                # Use float16s for smaller storage
   complex_type: complex64               # complex64 or complex128
 
-  convert_cmd: >                        # Customize conversion command
+  # Conversion command
+  convert_cmd: >
     ffmpeg -y -i "%infile%" -ar %rate%
     -acodec pcm_%signed%%depth%le
     -ac 1 "%outfile%"
