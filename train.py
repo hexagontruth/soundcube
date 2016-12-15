@@ -27,7 +27,8 @@ import lib.utils as utils
 from lib.net import Net
 
 def main():
-  net = Net(Net.TRAIN)
+  # We set autosave to true even if it is False in config
+  net = Net(Net.TRAIN, autosave=True)
 
   # Simplified parameters for setting epochs
   for k in cf.flags.keys():

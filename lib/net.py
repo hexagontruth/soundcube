@@ -97,19 +97,18 @@ class Net():
     self.opt = cf.net.opt
     self.metrics = []
     self.history = []
-    self.epochs = 0
     self.kwargs = cf.net.kwargs.dict()
 
     # Save state configuration
     self.model_base = cf.state.model_base
     self.model_dir = cf.state.model_dir
     self.model_base_path = os.path.join(self.model_dir, self.model_base)
-    self.save_w = cf.state.save_w
+    self.autosave = cf.state.autosave
     self.save_m = cf.state.save_m
     self.epochs_per_save = cf.state.epochs_per_save
     self.epochs_per_archive = cf.state.epochs_per_archive
-    self.epochs_since_save = 0
-    self.epochs_since_archive = 0
+    self.epochs = cf.state.base_epochs
+    self.base_epochs = cf.state.base_epochs # Override loaded epoch count
 
     # Defeault seed steps
     # Only affects default seeds - net will take any seed <= gen_steps
@@ -261,15 +260,34 @@ class Net():
       validation_data=(xx,yy),
       callbacks=[callback])
 
-    if self.save_w and self.epochs_since_save > 0:
-      self.save_weights()
-    if self.save_m and self.epochs_since_save > 0:
-      self.save_model()
+    if self.autosave:
+      if not self.is_save_epoch():
+        self.save_history()
+        self.save_weights()
+      if self.save_m:
+        self.save_model()
 
     if self.is_gen() and self.gmodel is not None:
       self.gmodel.set_weights(self.tmodel.get_weights())
 
   # --- HISTORY AND SAVING ---
+
+  def is_save_epoch(self):
+    """
+    Returns true if current epoch is regular autosave point.
+    """
+    return \
+      self.epochs_per_save != 0 and \
+      self.epochs % self.epochs_per_save == 0
+
+
+  def is_archive_epoch(self):
+    """
+    Returns true if current epoch is archive autosave point.
+    """
+    return \
+      self.epochs_per_archive != 0 and \
+      self.epochs % self.epochs_per_archive == 0
 
   def increment_history(self, logs={}):
     """
@@ -279,8 +297,6 @@ class Net():
     """
     # Increment counters
     self.epochs += 1
-    self.epochs_since_save += 1
-    self.epochs_since_archive += 1
 
     # Append logs
     vals = []
@@ -288,27 +304,22 @@ class Net():
       logs.get('mean_squared_error') or
       logs.get('mean_absolute_error') or
       logs.get('loss'))
-    if (logs.get('val_loss')):
+    if logs.get('val_loss'):
       vals.append(logs['val_loss'])
     vals = [float(e) for e in vals]
     self.history.append(vals)
 
     # Save if necessary
-    if (self.save_w):
-      if (self.epochs_since_save >= self.epochs_per_save):
-        self.save_weights()
+    if self.autosave:
+      if self.is_save_epoch():
         self.save_history()
-        self.epochs_since_save = 0
-      if (self.epochs_per_archive != 0 and
-        self.epochs_since_archive >= self.epochs_per_archive):
+        self.save_weights()
+      if self.is_archive_epoch():
         self.save_weights(archive=True)
-        self.epochs_since_archive = 0
 
   def save_history(self,  filepath=None):
     """
     Save self.history to NumPy file.
-
-    Does not save save-point trackers (epochs_since_save, etc).
 
     Arguments:
       str:filepath (self.model_base_path) -- Full path of save location
@@ -325,17 +336,13 @@ class Net():
     Load .npy history file. Must be valid NumPy file, ideally in same format
     as dictated by current loss/metrics configuration.
 
-    Clears save-point trackers if successful.
-
     Arguments:
       str:filepath (self.model_base_path) -- Full path of file to load
     """
     filepath = filepath or self.model_base_path + '.npy'
     try:
       self.history = np.load(filepath).tolist()
-      self.epochs = len(self.history)
-      self.epochs_since_save = 0
-      self.epochs_since_archive = 0
+      self.epochs = len(self.history) + self.base_epochs
     except IOError:
       raise ScNetError(
         'Error reading history file "{0}"'.format(self.model_base_path))
@@ -347,8 +354,6 @@ class Net():
 
     self.history = []
     self.epochs = 0
-    self.epochs_since_save = 0
-    self.epochs_since_archive = 0
 
   def get_weights(self):
     """
@@ -443,7 +448,7 @@ class Net():
 
     try:
       filepath = self.model_base_path + '.m'
-      self.tmodel.save()
+      self.tmodel.save(filepath)
       sclog('Saved model to "{0}" at {1} epochs.'.format(filepath, self.epochs))
     except IOError:
       raise ScNetError('Error writing model file. Possibly bad base path.')

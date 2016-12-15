@@ -42,10 +42,11 @@ net:
 state:
   model_dir: models
   model_base: model
-  save_w: true                          # Whether to save weights
-  save_m: false                         # Whether to save full model
-  epochs_per_save: 10                   # Save and overwrite weights here
+  autosave: true                        # Always set to true by train.py
+  epochs_per_save: 10                   # Autosave weights and loss here
   epochs_per_archive: 0                 # Save separate copy; 0 to disable
+  save_m: false                         # Save model at end of training
+  base_epochs: 0                        # Add epoch count offset
 
 output:
   output_dir: output
