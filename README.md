@@ -20,6 +20,8 @@ Recommended:
 
 - [CUDA](https://developer.nvidia.com/cuda-downloads)
 
+When using Theano, it may be necessary to set "backend" to "theano" in your `.keras/keras.json` file.
+
 ## Quick Start
 
 To train and generate with a model using the default configuration:
