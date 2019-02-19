@@ -26,7 +26,7 @@ import re
 import sys
 import yaml
 
-from scerror import *
+from .scerror import *
 
 CONFIG_PATH = 'config.yml'
 
@@ -53,7 +53,7 @@ class Config():
     self.__null__ = ConfigNull.instance
 
     # Recursively add key-value pairs
-    for k, v in opts.iteritems():
+    for k, v in opts.items():
       if type(v) == dict:
         setattr(self, k, Config(v, self))
       else:
@@ -87,7 +87,7 @@ class Config():
     Return sanitized dict of key-value pairs.
     """
     newdict = {}
-    for k, v in self.__dict__.iteritems():
+    for k, v in self.__dict__.items():
       if k[0:2] != '__':
         newdict[k] = v
     return newdict
@@ -96,7 +96,7 @@ class Config():
     """
     Returns iterator over key-value pairs in current instance.
     """
-    self.dict().iteritems()
+    self.dict().items()
     return
 
 

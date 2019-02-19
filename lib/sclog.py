@@ -7,7 +7,7 @@ Provides Soundcube logging functionality.
 import logging as _logging
 import os
 
-from config import config as cf
+from .config import config as cf
 
 ### --- LOGGING ---
 

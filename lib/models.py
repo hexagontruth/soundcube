@@ -29,13 +29,13 @@ from keras.layers.wrappers import *
 from keras.models import *
 from keras.regularizers import *
 
-from config import config as cf
-import utils as utils
+from .config import config as cf
+from . import utils as utils
 
 # Defaults
 
 default_t = cf.data.hops_per_second * cf.data.seconds_per_block - 1
-default_bins = cf.data.step_length / 2
+default_bins = cf.data.step_length // 2
 default_loss = cf.net.loss
 default_opt = cf.net.opt
 default_metrics = cf.net.metrics
@@ -107,28 +107,28 @@ def default(stateful=True, t=None, bins=default_bins, channels=2,
   m = Reshape((t, bins * 2))(m)
 
   if sizes[0]:
-    m = TimeDistributed(Dense(sizes[0], init='he_uniform'))(m)
+    m = TimeDistributed(Dense(sizes[0], kernel_initializer='he_uniform'))(m)
     m = Dropout(w_dropout[0])(m)
 
   m = LSTM(sizes[1], stateful=stateful, return_sequences=True)(m)
 
   b0 = b1 = Dropout(w_dropout[1])(m)
   b0 = LSTM(sizes[2], stateful=stateful, return_sequences=True)(b0)
-  b0 = TimeDistributed(Dense(bins * 2, init='he_uniform', activation='relu'))(b0)
+  b0 = TimeDistributed(Dense(bins * 2, kernel_initializer='he_uniform', activation='relu'))(b0)
   b0 = Dropout(w_dropout[2])(b0)
 
   b1 = LSTM(sizes[2], stateful=stateful, return_sequences=True)(b1)
-  b1 = TimeDistributed(Dense(bins * 2, init='he_uniform', activation='tanh'))(b1)
+  b1 = TimeDistributed(Dense(bins * 2, kernel_initializer='he_uniform', activation='tanh'))(b1)
   b1 = Dropout(w_dropout[2])(b1)
 
-  m = merge([b0, b1], mode='mul')
+  m = Multiply()([b0, b1])
 
   if stateful:
     main_out = Reshape((bins, 2))(m)
   else:
     main_out = Reshape((t, bins, 2))(m)
 
-  model = Model(input=main_in, output=main_out)
+  model = Model(inputs=main_in, outputs=main_out)
   model.compile(loss=loss, optimizer=opt, metrics=metrics)
 
   return model
@@ -179,7 +179,7 @@ def simple(stateful=True, t=None, bins=default_bins, channels=2,
   m = Reshape((t, bins * 2))(m)
 
   if sizes[0]:
-    m = TimeDistributed(Dense(sizes[0], init='he_uniform'))(m)
+    m = TimeDistributed(Dense(sizes[0], kernel_initializer='he_uniform'))(m)
   for i in range(layers):
     m = Dropout(dropout)(m)
     m = LSTM(sizes[1], stateful=stateful, return_sequences=True)(m)

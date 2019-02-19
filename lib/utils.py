@@ -19,9 +19,9 @@ import subprocess
 import numpy as np
 import scipy.io.wavfile as wav
 
-from config import config as cf
-from sclog import sclog
-from scerror import *
+from .config import config as cf
+from .sclog import sclog
+from .scerror import *
 
 # There are a number of presently-unused functions that I have left here in case
 # they may be of value to those wishing to expand the functionality of the
@@ -380,7 +380,7 @@ def is_data(target_dir=target_dir):
     str:target_dir (cf.data.target_dir) -- Target directory
   """
   files = os.listdir(target_dir)
-  files = filter(lambda x: x[-4:] == '.npy', files)
+  files = [e for e in files if e[-4:] == '.npy']
   return len(files) > 0
 
 def normalize(s, axis=None):

@@ -15,11 +15,11 @@ import numpy as np
 import keras.models
 from keras.callbacks import Callback
 
-from config import config as cf
-from sclog import sclog
-from scerror import *
-import models
-import utils
+from .config import config as cf
+from .sclog import sclog
+from .scerror import *
+from . import models
+from . import utils
 
 # I don't remember why this is here but I'm afraid to remove it.
 sys.setrecursionlimit(50000)
@@ -76,7 +76,7 @@ class Net():
     Set default attribute values based on configuration.
     """
     self.hops_per_block = cf.data.hops_per_second * cf.data.seconds_per_block
-    self.bins = cf.data.step_length / 2
+    self.bins = cf.data.step_length // 2
 
     # Channels represent bin depth
     # Changing this could cause unforeseen failures
@@ -129,7 +129,7 @@ class Net():
     Arguments:
       **kwargs -- Key-value pairs for fields
     """
-    for k, v in kwargs.iteritems():
+    for k, v in kwargs.items():
       setattr(self, k, v)
 
     # Derived fields
@@ -256,7 +256,7 @@ class Net():
     h = self.tmodel.fit(
       x, y,
       batch_size=batch_size,
-      nb_epoch=epochs,
+      epochs=epochs,
       validation_data=(xx,yy),
       callbacks=[callback])
 
@@ -493,13 +493,13 @@ class Net():
     # Else let's  see what other weight files are lying around
     else:
       mfiles = os.listdir(self.model_dir)
-      mfiles = filter(lambda e: e[-2:] == '.w', mfiles)
-      mfiles = filter(lambda e: e[0] != '.', mfiles)
+      mfiles = [e for e in mfiles if e[-2:] == '.w']
+      mfiles = [e for e in mfiles if e[0] != '.']
       mfiles = [os.path.join(self.model_dir, e) for e in mfiles]
       mfiles.sort()
 
       # TODO: Fix this for names that start the same
-      files = filter(lambda e: utils.index(e, self.model_base) == 0, mfiles)
+      files = [e for e in mfiles if utils.index(e, self.model_base) == 0]
       if len(files) > 0:
         # Last file should have highest training numbers
         self.load_weights(files[-1])

@@ -15,9 +15,9 @@ etc. --- they are just a technique to see, at a glance, whether your output
 even makes sense.
 """
 
-from scerror import *
-from sclog import sclog
-import utils
+from .scerror import *
+from .sclog import sclog
+from . import utils
 
 try:
   import matplotlib

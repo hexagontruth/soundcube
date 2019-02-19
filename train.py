@@ -40,8 +40,8 @@ def main():
   if not cf.flags.get('new'):
     net.load()
 
-  print 'Completed {0} epochs. Training next {1}...'.format(
-    net.epochs, net.training_epochs)
+  print('Completed {0} epochs. Training next {1}...'.format(
+    net.epochs, net.training_epochs))
 
   net.train()
   sclog('Finished training {0} epochs.'.format(net.training_epochs))

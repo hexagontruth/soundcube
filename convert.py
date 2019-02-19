@@ -37,7 +37,7 @@ def main(clear=clear):
   # Convert wavs to freq timesteps
   k = utils.convert_wavs_to_freqs()
   sclog('Converted {0} wavs to frequency timesteps.'.format(k))
-  print 'Done converting {0} files.'.format(k)
+  print('Done converting {0} files.'.format(k))
 
 if (__name__ == '__main__'):
   main()

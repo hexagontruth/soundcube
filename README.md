@@ -4,11 +4,13 @@ Soundcube is a Python project for facilitating the algorithmic generation of mus
 
 # Dependencies
 
-Required:
+See `requirements.txt` for details.
 
-- [Theano](http://deeplearning.net/software/theano/) or [TensorFlow](https://tensorflow.com/) (not tested with TensorFlow)
+- Python 3
 
-- [Keras](http://keras.io/)
+- [TensorFlow](https://tensorflow.com/) or [Theano](http://deeplearning.net/software/theano/) (the latter is no longer being developed)
+
+- [Keras 2](http://keras.io/)
 
 - [NumPy](http://www.numpy.org/)
 
@@ -20,11 +22,15 @@ Recommended:
 
 - [CUDA](https://developer.nvidia.com/cuda-downloads)
 
-When using Theano, it may be necessary to set "backend" to "theano" in your `.keras/keras.json` file.
+With virtualenv and pip, run the following from the project root directory to install all Python dependencies:
+
+          virtualenv -p `which python3` .env
+          source .env/bin/activate
+          pip install -r requirements.txt
 
 ## Quick Start
 
-To train and generate with a model using the default configuration:
+To train and generate a model using the default configuration:
 
   1. Place existing music files in the `music` directory.
 
@@ -48,7 +54,7 @@ Most `config.yml` key-value pairs can be set when executing one of the CLI scrip
 
 ### Training
 
-1. Move an appropriate corpus of music to the `my music` directory. I recommend something in the range of 2-4 hours, less certainly if your hardware sucks. Music can be left in separate directories --- the conversion script will flatten all directory hierarchies when converting into the _data_ directory.
+1. Move an appropriate corpus of music to the `music` directory. I recommend something in the range of 2-4 hours, less certainly if your hardware sucks. Music can be left in separate directories --- the conversion script will flatten all directory hierarchies when converting into the _data_ directory.
 
 2. Once you have satisfied all dependencies and customized the configuration file to your liking (though it should work out of the box), run `python convert.py`.
 
@@ -90,4 +96,4 @@ All functionality should work in an interactive session. For instance, the entir
     y = n.gen()
     utils.write_output('output/my_fancy_song.wav', y)
 
-A variety of more fine-grained options are available in both the `utils` module and `Net` class. Consult the documentation associated with these respective files for more details.
+A variety of more fine-grained options are available in both the `utils` module and `Net` class. Consult the documentation associated with these files for more details.

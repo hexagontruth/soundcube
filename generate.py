@@ -47,15 +47,15 @@ def main(files=files):
   """
 
   # Build net
-  print 'Loading net...'
+  print('Loading net...')
   net = Net(Net.GEN)
-  print 'Loading model...'
+  print('Loading model...')
   net.load()
 
   # Generate
   for filepath in filepaths:
     y = net.gen()
-    print 'Finished generating "{0}."'.format(filepath)
+    print('Finished generating "{0}."'.format(filepath))
     sclog('Generated "{0}."'.format(filepath))
     utils.write_output(filepath, y)
     if (cf.output.save_raw):
